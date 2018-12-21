@@ -695,3 +695,61 @@ done
     --> 使用echo输出命令替换厚的未括变量,echo会将换行符去除
     --> 命令替换允许使用重定向或者cat来获取文件内容作为变量内容
         echo ` <$0`     # 输出脚本内容
+    --> 不要将一个长文本内容作为值赋给一个变量，也不要将二进制文件内容作为变量的值 
+    --> 没有缓冲溢出的情况出现，这是翻译性语言的特性，相较编译语言提供更多的保护
+    --> 变量声明甚至可以通过一个循环结构来赋值
+```
+variable1=`for i in 1 2 3 4 5
+do
+    echo -n "$i"
+done`
+```
+    --> 命令替换使用$()替换掉反引号的使用
+        允许这种形式：content=$(<$File2)
+    --> $()的形式允许多重嵌套
+
+13，运算展开
+
+    算数展开提供了一个强大的工具，用于在脚本中进行算数运算；常用的有反引号、双括号、let
+
+    变种：
+    --> 使用反引号的算数运算，常常和expr结合使用
+        z=`expr $z + 3`
+    --> 算数展开使用双括号和let，反引号的结构已经被(())，$(())和let替换
+        z=$(($z+3))或者z=$((z+3))也可以
+        (( n += 1 ))是正确的；(( $n += 1 ))是错误的
+        let z=z+3是正确的；let "z += 3"也可以
+
+## linux命令
+15，内部命令和内部指令
+    内建指令是指包含在bash工具集内部的命令；内建命令的作用一方面是为了提升性能，常用于需要fork新进程的命令，另一方面是出于某些命令需要直接访问shell内部
+    
+    --> 父进程获取到紫禁城的pid后，可以传递参数给紫禁城，反过来则不行；这个需要注意，出现这种问题时，一般难以排查
+```
+PIDS=$(pidof sh $0) # Process IDs of the various instances of this script.
+P_array=( $PIDS )
+echo $PIDS
+
+let "instances = ${#P_array[*]} - 1" 
+echo "$instances instance(s) of this script running."
+echo "[Hit Ctl-C to exit.]"; 
+echo
+
+sleep 1
+sh $0
+exit 0
+```
+    --> 一般来说，bash内建指令不会自动fork新的进程，外部命令或者管道过滤时会fork新进程
+    --> 内建指令可能和系统命令有同样的名字，但bash会使用内建命令，echo和/bin/echo并不一样
+        echo "This line uses the \"echo\" builtin."
+        /bin/echo "This line uses the /bin/echo system command."
+    --> 关键字是预留字、符号，或者是操作符；关键字对shell来说具有特殊的含义，是shell的语句块的构成部分；关键字属于bash的硬编码部分，不同于内建指令，关键字是命令的子单元
+
+### IO命令
+    echo：打印表达式或者变量到标准输出
+    --> 和-e使用，用来打印脱意符
+    --> 默认情况下，每个echo会打印一个终端换行符，当与-n一起使用时，会将换行符省略掉
+    --> echo `command`的形式会删除所有由command生成的换行符
+        变量$IFS默认情况下降'\n'作为分隔符之一，bash将换行符后面的内容作为参数传递给echo，echo将这些参数打印出来，使用空格分隔
+    
+    printf：格式化打印，增强型的echo，是一个C语言中printf()函数的限制型变体，部分内容与原函数使用不同
