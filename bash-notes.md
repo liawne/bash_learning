@@ -753,3 +753,150 @@ exit 0
         变量$IFS默认情况下降'\n'作为分隔符之一，bash将换行符后面的内容作为参数传递给echo，echo将这些参数打印出来，使用空格分隔
     
     printf：格式化打印，增强型的echo，是一个C语言中printf()函数的限制型变体，部分内容与原函数使用不同
+    printf format-string... parameter...
+    --> 格式化输出
+```
+declare -r PI=3.14159265358979
+printf "Pi to 2 decimal places = %1.2f" $PI
+printf "Pi to 9 decimal places = %1.9f" $PI
+```
+    --> 格式化输出错误内容很实用
+```
+# 注意$'strings...'的格式，在此处与%s的使用
+error()
+{
+    printf "$@" >&2 # Formats positional params passed, and sends them to stderr.
+    echo
+    exit $E_BADDIR
+}
+cd $var || error $"Can't cd to %s." "$var"
+```
+    read：通过标准输入读取变量值，动态的通过键盘获取值，与-a选项一起使用时可获取数组变量
+    --> read通常情况下，'\'会去除换行的含义，当与-r参数一同使用时，'\'按照原意进行输出
+    --> -s：不显示输入内容到屏幕上
+    --> -n：设置仅接收多少字符，-n同样能接受特殊按键，但需要清楚特殊按键对应的字符，但不能获取到回车的字符
+            arrowup='\[A'
+            arrowdown='\[B'
+            arrowrt='\[C'
+            arrowleft='\[D'
+            insert='\[2'
+            delete='\[3'
+    --> -p：在接收输入内容前，打印后续内容到屏幕上，作为提示用
+    --> -t：用在设置超时时间的场景下
+    --> -u：获取目标文件的文件描述符
+    --> read命令同样可以通过重定向到标准输入的文件来读取变量，如果文件内容超过一行，则只有第一行内容会被用于变量读取；
+    --> 当read后接的参数多余一个时，默认会以空格（或者连续空格）作为分隔符来读取变量，此行为可通过更改环境变量$IFS来改变
+```
+read var1 < /tmp/file1
+read var1 var2 < /tmp/file1
+while read line; do echo $line; done < /tmp/file1
+```
+
+### 文件系统命令
+    cd：切换路径命令
+    --> 使用-P参数，忽略链接文件
+    --> cd -,切换到上一个目录，$OLDPWD变量保存的内容
+    --> 使用两个斜杠时，cd命令会出现我们不期望的情况
+```
+# 以下的问题在命令行和脚本中都存在，需要注意
+$ cd //
+$ pwd
+//
+```
+    pwd：显示当前工作目录路径
+    -->使用该命令的效果同$PWD完全相同
+
+    pushd,popd,dirs：这个命令集合是一个工作目录书签工具，用于在工作目录中有序的来回切换；后进先出的堆栈方式处理工作目录组，允许对这个堆栈进行各种不同的操作
+    --> pushd dir-name把目录dir-name放入到到堆栈中（栈顶），同时切换当前目录到dir-name中去
+    --> popd 将目录栈顶的目录从栈中移除，同时将工作目录切换至此时的栈顶目录中去
+    --> dirs 列出栈中的目录列表，popd和pushd会引用到dirs
+
+    在脚本中需要切换多个目录工作时，使用这个命令集可以方便的进行管理，$DIRSTACK数组包含有目录的列表栈内容
+
+### 变量操作命令
+    let：let命令执行对变量的算数运算操作，在很多种情况下，let相当于简化版的expr命令
+```
+let a=11; let a=a+5
+let "a <<= 3"
+let "a += 5"
+let a++(++a)
+let "t = a<7?7:11"
+```
+    --> 使用let命令，在特定情况下，命令返回值和通常情况不同
+```
+$ var=0
+$ echo $?
+0
+$ let var++
+$ echo $?
+1
+```
+    eval：
+    eval arg1 [arg2] ... [argN]
+    结合一个表达式或者一列表达式中的参数，是这些参数联合；所有在表达式中的变量都会被展开，得出的字符串被转换为命令
+```
+$ command_string="ps ax"
+$ eval "$command_string"
+```
+    --> 每次调用eval都会强制重新评估其参数
+```
+$ a="$b"
+$ b="$c"
+$ c=d
+$ echo $a
+$ eval echo $a
+$ eval eval echo $a
+```
+```
+params=$#
+param=1
+while [ "$param" -le "$params" ]
+do
+    echo -n "Command-line parameter "
+    echo -n \$$param
+    echo -n " = "
+    eval echo \$$param
+    (( param ++ ))
+done
+```
+    --> 使用eval命令有一定的风险，如果存在替换的方案，尽量使用替换方案来实现目的；像是eval $COMMANDS，在命令的返回结果中可能存在危险的内容如rm -rf *等
+    set：
+    set命令可用于更改脚本内部的变量值或者脚本选项，用法之一是可以设置option flags来更改脚本执行的动作；另一个用法是可以是将命令的输出结果设置为位置参数。  
+```
+set `uname -a`
+```
+    --> 当单独使用set命令时，终端显示所有的环境变量以及已经设置的变量
+    --> set后接--,表示将一个变量的内容设置为位置参数,当--后没有任何参数时,表示取消所有的位置参数
+```
+variable="one two three four five"
+set -- $variable
+first_param=$1
+second_param=$2
+shift; shift
+
+remaining_params="$*"
+echo "first parameter = $first_param"                   # one
+echo "second parameter = $second_param"                 # two
+echo "remaining parameters = $remaining_params"         # three four five
+
+set --
+first_param=$1
+second_param=$2
+echo "first parameter = $first_param"                   # (null value)
+echo "second parameter = $second_param"                 # (null value)
+```
+    unset:
+    unset命令删除一个shell变量,将变量的值设置为null,改命令不影响位置参数
+    --> 大多数情况下,使用unset设置过的变量和undeclare设置过的变量是等效的;但对于${parameter:-default}还是有区分的
+
+    export:
+    export命令将变量的值声明至所有由脚本生成的子shell或者是shell,令其都可使用;在开机启动脚本中使用是export一个重要使用场景,有初始化环境的作用,让后启用的脚本能够继承环境变量
+    --> 父进程是没有办法获取到子进程的变量的
+    --> 大部分情况下,export var=xxx和var=xxx;export var是等效的,但在某些情况下有差别
+```
+bash$ export var=(a b); echo ${var[0]}
+(a b)
+bash$ var=(a b); export var; echo ${var[0]}
+a
+```
+
