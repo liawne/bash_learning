@@ -900,3 +900,285 @@ bash$ var=(a b); export var; echo ${var[0]}
 a
 ```
 
+    declare/typeset:
+    这两个命令用来设定或者限制变量的属性
+    readonly:
+    等效于declare -r,将一个变量设置为只读,或者实际效用为设置成一个常量,这个命令类似于C中的const
+
+    getopsts:
+    这个强大的命令解析命令行参数,传递给脚本使用,这个命令类似于C中的外部命令getopt,getopt库函数;命令允许传递和连接多个选项,并且为脚本联合多个参数,如下所示:
+```
+scriptname -abc -e /usr/local
+```
+    --> getopts使用两个默认的变量:
+        $OPTIND(OPTion INDex)是参数指针
+        $OPTARG(OPTion ARGument)是参数指定一个选项
+        选项名声明时后接冒号表明这个选项有一个指定的参数
+    --> getopts结构一般会同while循环使用,每次处理一个选项和参数,然后变量$OPTIND指针指向下一个值
+        命令行传递给脚本的参数前面必须接'-',存在'-'的前缀,让getopts识别命令行参数为选项;实际上,没有'-'时,getopts不会去处理这些参数,直接当作缺失选项处理
+        getopts模板与while循环有些许差别
+        getopts结构是外部命令getopt命令的替换
+```
+while getopts ":abcde:fg" Option
+# Initial declaration.
+# a, b, c, d, e, f, and g are the options (flags) expected.
+
+# The : after option 'e' shows it will have an argument passed with it.
+do
+    case $Option in
+    a ) # Do something with variable 'a'.
+    b ) # Do something with variable 'b'.
+    ...
+    e) # Do something with 'e', and also with $OPTARG, 
+       # which is the associated argument passed with option 'e'.
+    ...
+    g ) # Do something with variable 'g'.
+    esac
+done
+shift $(($OPTIND - 1))      # Move argument pointer to next.
+                            # All this is not nearly as complicated as it looks <grin>.
+```
+
+```
+NO_ARGS=0
+E_OPTERROR=85
+if [ $# -eq "$NO_ARGS" ]				# Script invoked with no command-line args?
+then
+	echo "Usage: `basename $0` options (-mnopqrs)"
+	exit $E_OPTERROR
+ 										# Exit and explain usage.
+										# Usage: scriptname -options
+										# Note: dash (-) necessary
+fi
+
+while getopts ":mnopq:rs" Option
+do
+case $Option in
+	m)      echo "Scenario #1: option -m- [OPTIND=${OPTIND}]";;
+	n | o ) echo "Scenario #2: option -$Option- [OPTIND=${OPTIND}]";;
+	p)      echo "Scenario #3: option -p- [OPTIND=${OPTIND}]";;
+	q)      echo "Scenario #4: option -q- with argument \"$OPTARG\" [OPTIND=${OPTIND}]";;
+	r | s ) echo "Scenario #5: option -$Option-";;
+	*)      echo "Unimplemented option chosen.";; 		# Default.
+esac
+done
+
+shift $(($OPTIND - 1))
+exit $?
+```
+
+### 脚本行为命令
+    source/. (点命令)
+    这个命令,当在脚本外使用时,作用为调用一个脚本;
+    在脚本内部使用,source file-name的作用为加载file-name的内容;
+    --> source一个文件,将该文件的代码加载进入当前脚本(作用内容于C里面的#include作用)
+    --> 最终结果是,一个被source过的文件,代码就像在当前脚本物理上包含了被source过的文件的代码内容;当多个脚本使用同一个数据文件时,这种方式很有用
+    --> 如果被source的文件本身是一个可执行脚本,当source后,脚本会执行,然后将控制权交回调用其的脚本;一个可执行的source文件可以使用return来实现目的
+    --> 参数(可选)可以传递给被source的文件作为位置参数
+```
+source $filename $args1 $args2
+```
+    --> 脚本甚至可以在执行时source自己,随然可能没有什么实际的应用场景
+```
+#!/bin/bash
+MAXPASSCNT=100
+echo -n "$pass_count "
+let "pass_count += 1"
+
+while [ "$pass_count" -le $MAXPASSCNT ]; do
+    . $0
+done
+
+echo
+exit 0
+```
+    
+    exit
+    无条件的终止一个脚本;exit命令可以选择性的后接一个整数参数,用作脚本的exit返回状态
+    --> 最简单的方式是直接使用exit 0, 指明此次运行成功
+    --> 如果一个脚本以未接参数的exit作为结尾,那么脚本的返回值则为最后一条命令的返回值,等效于exit $?
+    --> 一个exit命令也可以用于终止一个子shell
+
+    exec
+    这个shell内建命令替换当前进程为一个指定的命令
+    --> 通常情况下,当shell遇到一个命令时,会fork一个子进程来执行该命令,当使用exec命令时,shell不再fork子进程,并且exec调用的命令替换了shell
+    --> 当exec在脚本中使用时,当exec调用的命令结束时,会强制退出脚本
+```
+#!/bin/bash
+exec echo "Exiting \"$0\" at line $LINENO."     # Exit from script here.
+                                                # $LINENO is an internal Bash variable set to the line number it's on.
+# The following lines never execute.
+echo "This echo fails to echo."
+exit 99
+```
+```
+#!/bin/bash
+# self-exec.sh
+# Note: Set permissions on this script to 555 or 755,
+#		then call it with ./self-exec.sh or sh ./self-exec.sh.
+
+echo
+echo "This line appears ONCE in the script, yet it keeps echoing."
+echo "The PID of this instance of the script is still $$."
+
+# Demonstrates that a subshell is not forked off.
+
+echo "==================== Hit Ctl-C to exit ===================="
+sleep 1
+exec $0 							# Spawns another instance of this same script
+									#+ that replaces the previous one.
+
+echo "This line will never echo!"	# Why not?
+
+exit 99								# Will not exit here!
+									# Exit code will not be 99!
+```
+	--> exec同时还具有重新声明文件描述符的功能,例如:exec <zzz-file用文件zzz-file内容替换标准输入
+	--> 在find命令中使用的-exec选项和shell内建命令exec不同,需要注意
+
+	shopt
+	这个命令允许在运行的过程中更改shell选项,通常出现在bash启动文件中,同样在脚本中可以使用,需要version 2以上版本的bash
+```
+shopt -s cdspell
+# Allows minor misspelling of directory names with 'cd'
+# Option -s sets, -u unsets.
+
+cd /hpme 	# Oops! Mistyped '/home'.
+pwd 		# /home
+			# The shell corrected the misspelling.
+```
+	
+	caller
+	在一个函数中放置一个caller命令,会打印出是在第几行调用这个函数,不再函数中使用没有作用
+```
+#!/bin/bash
+function1 ()
+{
+	caller 0	# Tell me about it.
+}
+function1
+```
+	--> caller命令在被source后,同样能够打印出在被source文件中的位置,类似于一个函数,这个被称作为子程序
+	--> caller在debug中比较有用
+
+### 常用命令
+	true
+	一个返回成功(0)的退出状态码命令,不做任何其他动作
+	常用与无限循环结构中: while true
+
+	false
+	一个返回失败(非0)退出状态码命令,不做任何其他动作
+	常用场景同样为无限循环结构: while false
+
+	type[cmd]
+	类似于which的外部命令,type命名用于鉴定cmd命令;
+	--> 不同于which,type是一个内建命令
+	--> type使用-a参数时,用于鉴定关键字和内建命令,同样定位命令在系统上的唯一名称
+```
+bash$ type '['
+[ is a shell builtin
+bash$ type -a '['
+[ is a shell builtin
+[ is /usr/bin/[
+bash$ type type
+type is a shell builtin
+```
+	--> 在测试一个命令是否存在时,type命令非常有用,可以在判断结构中使用
+```
+bash$ type bogus_command &>/dev/null
+bash$ echo $?
+1
+```
+	hash [cmds]
+	记录指定命令的path名--在shell的哈希表中--因此shell或者脚本不需要逐次的查找$PATH变量目录来调用这些命令
+	--> 当hash命令后不接参数时,则仅仅将已经hash的命令列出来
+	--> 使用-r参数是清空hash表操作
+
+	bind
+	内建命令bind显示或者修改readline关键子绑定
+	readline:The readline library is what Bash uses for reading input in an interactive shell.
+
+	help
+	获取简短的shell内建命令帮助信息,这个命令whatis的副本,但是是一个内建命令
+	help命令在bash v4后显示的信息详尽很多
+
+### job控制命令
+	该部分内容的部分命令需要后接任务鉴定符作为参数
+	
+	jobs
+	列出当前在后台运行的所有job,给出job数字,没有ps有用
+	--> job和process的概念很容易混淆;一些特定的内建命令,像kill,disown,wait后接job号或者进程号作为参数;但fg,bg和jobs命令则仅接收任务号(job号)作为参数
+```
+bash$ sleep 100 &
+[1] 1384
+bash $ jobs
+[1]+ Running	 sleep 100 &
+```
+	上面的命令及其输出中,数字1是任务号(由当前shell获取的job号),1384是进程号(由系统获取),杀掉job/process,使用kill %1或者kill 1384
+
+	disown
+	移除shell中table内正在运行的job
+```
+$ jobs
+[1]   Running                 sleep 1000 &
+[2]   Running                 sleep 1000 &
+[3]-  Running                 sleep 1000 &
+[4]+  Running                 sleep 1000 &
+$ disown
+$ jobs
+[1]   Running                 sleep 1000 &
+[2]-  Running                 sleep 1000 &
+[3]+  Running                 sleep 1000 &
+```
+	
+	fg,bg
+	fg命令将一个运行在后台的任务切换至前台. bg命令重新启动一个挂起的任务,并在后台执行
+	--> 如果没有指定任务号,则默认fg和bg会作用与当前正在running状态的任务
+
+	wait
+	暂时挂起脚本的执行过程,直到所有的后台运行任务已经结束,或者是作为参数的任务号/进程号已经终止,返回wait后接命令的返回状态码
+	--> 使用wait的场景通常为:指定的后台任务已完成,再继续执行脚本后续内容
+```
+#!/bin/bash
+ROOT_UID=0											# Only users with $UID 0 have root privileges.
+E_NOTROOT=65
+E_NOPARAMS=66
+if [ "$UID" -ne "$ROOT_UID" ]; then
+	echo "Must be root to run this script."			# "Run along kid, it's past your bedtime."
+	exit $E_NOTROOT
+fi
+
+if [ -z "$1" ]; then
+	echo "Usage: `basename $0` find-string"
+	exit $E_NOPARAMS
+fi
+
+echo "Updating 'locate' database..."
+echo "This may take a while."
+updatedb /usr &										# Must be run as root.
+
+wait
+# Don't run the rest of the script until 'updatedb' finished.
+# You want the the database updated before looking up the file name.
+
+locate $1
+# Without the 'wait' command, in the worse case scenario,
+#+ the script would exit while 'updatedb' was still running,
+#+ leaving it as an orphan process.
+exit 0
+```
+	--> wait也可以后接一个任务识别号作为参数,例如: wait %1或者wait $PPID
+	--> 在一个脚本中,使用&符号让命令在后台执行可能会导致脚本hang死直到按下enter键,这种情况主要出现在需要输出到标准输出的命令,这种情况的出现比较让人烦;在这种命令后接wait
+```
+#!/bin/bash
+# test.sh		  
+
+ls -l &
+echo "Done."
+wait
+bash$ ./test.sh
+Done.
+ [bozo@localhost test-scripts]$ total 1
+ -rwxr-xr-x    1 bozo     bozo           34 Oct 11 15:09 test.sh
+```
+	将命令输出写入到文件或者/dev/null中也可以解决这个问题
