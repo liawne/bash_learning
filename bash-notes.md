@@ -170,13 +170,26 @@
 
     append:
     1, 脚本名称不变,使用软链接给创建多个脚本名称,调用不同的名称,执行不同的功能
-        case `basenam # Or: case ${0##*/} in
-			"wh" 		) whois $1@whois.tucows.com;;
-			"wh-ripe" 	) whois $1@whois.ripe.net;;
-			"wh-apnic" 	) whois $1@whois.apnic.net;;
-			"wh-cw" 	) whois $1@whois.cw.net;;
-			* 			) echo "Usage: `basename $0` [domain-name]";;
-        esac
+```
+ln -s /usr/local/bin/wh /usr/local/bin/wh-ripe
+ln -s /usr/local/bin/wh /usr/local/bin/wh-apnic
+ln -s /usr/local/bin/wh /usr/local/bin/wh-tucows
+
+E_NOARGS=75
+
+if [ -z "$1" ]; then
+	echo "Usage: `basename $0` [domain-name]"
+	exit $E_NOARGS
+fi
+
+case `basenam $0` in # Or: case ${0##*/} in
+	"wh" 		) whois $1@whois.tucows.com;;
+	"wh-ripe" 	) whois $1@whois.ripe.net;;
+	"wh-apnic" 	) whois $1@whois.apnic.net;;
+	"wh-cw" 	) whois $1@whois.cw.net;;
+	* 			) echo "Usage: `basename $0` [domain-name]";;
+esac
+```
 	
 3, 引用
 
@@ -1182,3 +1195,264 @@ Done.
  -rwxr-xr-x    1 bozo     bozo           34 Oct 11 15:09 test.sh
 ```
 	将命令输出写入到文件或者/dev/null中也可以解决这个问题
+
+    suspend
+    改命令与ctrl+Z有相似的效果,但是这个命令是挂起shell(shell的父进程应该在合适的时候恢复该shell的运行)
+
+    logout
+    退出一个登录shell,后面可借参数n,指定登出shell的状态返回码
+
+    times
+    显示命令执行用时数据,得出的信息价值有限,对于profile和基础shell脚本并不通用
+
+    kill
+    强制终止一个进程,通过传递合适的终止信号
+```
+#!/bin/bash
+# self-destruct.sh
+kill $$				# Script kills its own process here.
+					# Recall that "$$" is the script's PID.
+
+echo "This line will not echo."
+# Instead, the shell sends a "Terminated" message to stdout.
+
+exit 0				# Normal exit? No!
+
+# After this script terminates prematurely,
+#+ what exit status does it return?
+#
+# sh self-destruct.sh
+# echo $?
+# 143
+#
+# 143 = 128 + 15
+#					TERM signal
+```
+
+	--> kill -l列出所有支持的信号列表(包含在文件/usr/include/asm/signal.h)
+	--> kill -9是一个确认杀死,通常使用在单独使用kill命令无法杀死的场景下,有时,kill -15也能生效
+	--> 僵尸进程是一个子进程已经终止,但父进程还没有被kill,无法被一个loged-on用户杀死--你无法杀死一个已经死的物件--但是init迟早会清理这些进程
+
+	killall
+	killall命令通过名字杀死一个运行进程,而不是通过pid
+	--> 如果同时存在多个命令运行实例,则执行killall命令会将所有的这些实例全部杀死
+	--> 此处的killall是指在/usr/bin/下的命令,而不是/etc/rc.d/init.d下的killall脚本
+
+	command
+	command命令禁用接在其后的命令的alias和function
+	--> 这个命令是三个影响脚本命令执行的指令之一,其他两个分别是builtin和enable
+
+	builtin
+    使用命令builtin BUILTIN_COMMAND将命令BUILTIN_COMMAND当作一个shell内建命令来执行;临时禁用与调用命令同名的functions或者是系统外部命令
+
+    enable
+    改命令能够启用或者禁用一个shell内建命令
+    例如: 命令enable -n kill禁用了shell内建命令kill,当bash继续调用kill时,调用的是外部命令kill
+    --> enable的-a选项列出所有的shell内建命令,指示这些命令是否被enable
+    --> -f filename选项让enable加载一个内建命令作为一个共享库模块从一个正确编译的二进制文件
+
+### 任务识别符
+
+|内容|含义|
+|:-|:-|
+|%N |任务号
+|%S |引用以S开头的job |
+|%?S|引用包含S的job |
+|%%|当前job(最后一个在前台停止的任务或者是最后一个在后台启动的任务) |
+|%+|当前job(最后一个在前台停止的任务或者是最后一个在后台启动的任务)|
+|%-|上一个job|
+|$!|上一个后台任务|
+
+## 外部过滤器,程序及命令
+标准的UNIX命令让shell脚本更加灵活,shell脚本的能力通过多个系统命令和shell指令的整合来实现
+
+### 基础命令
+    ls
+    基础文件罗列命令.很容易理解这个命令的低调;
+    用-R参数是递归的罗列出当前目录下的内容
+    用-S参数是按照文件的大小来排序
+    用-t参数是按照文件的修改时间来排序
+    用-v参数是文件名逆序罗列(依照数值顺序)
+    用-b参数是显示脱意字符
+    用-i参数是显示inode信息
+    --> ls返回一个非零返回值,当目标文件不存在时
+
+    cat/tac
+    cat是concatenate的缩写,获取一个文件的内容,显示到标准输出,当与重定向符(>或者>>)一同使用时,一般用来连接文件
+    --> -n参数是在文件的前面加上行号
+    --> -b参数是只显示非空行内容
+    --> -v参数是显示不可打印字符
+    --> -s参数是将多行空行显示为一行空行
+
+    --> 在一个管道中,直接使用重定向会比cat的效率更高
+```
+cat filename | tr a-z A-Z
+tr a-z A-Z < filename
+```
+    --> tac是cat的反向命令,反向输出一个文件的内容(最后一行变为第一行,依次向上)
+
+    rev
+    将文件的每一行内容反向输出到标准输出,注意这个通tac功能是不一样的
+
+    cp
+    文件复制命令
+    cp file1 file2 --> 将file1复制到文件file2,如果file2存在,则覆盖文件file2内容
+    --> 尤其注意-a(archive)参数的使用,可以用于将一个目录完整复制
+    --> -u(update)参数避免覆盖
+    --> -r/-R 递归的复制
+
+    move
+    文件移动命令
+    命令等效与cp和rm的结合体,用来将多个文件移动到一个文件夹中,或者重命名文件夹;
+    --> 当mv用在一个非交互的脚本中时,mv会使用-f(force)参数来忽略用户的输入内容
+    --> 当把一个目录mv为另一个已经存在目录名称时,该目录会变成已存在目录的子目录
+
+    rm
+    删除文件命令
+    --> -f(force)参数用于强制删除文件,即使该文件为只读,在脚本中使用,用来绕开用户输入非常有用
+    --> 当一个文件以'-'开头时,使用rm删除会失败;rm将以'-'的内容作为参数使用
+        a.解决方式之一是在要删除文件的前面加上'--'(选项结束标识符)
+        b.另一种方式是,在文件名前加上./,表示是在当前目录下的文件
+```
+rm -- -badname
+rm ./-badname
+```
+    --> 当使用-r参数时,表示从当前指定目录递归删除
+        a.使用路径名称中包含变量的时候,尤其小心,当变量不存在时,有可能就变成了rm -rf /
+        b.使用rm -rf *时需要注意;若命令执行时,当前工作路径不对,改命令结束后,效果将等同如rm -rf /
+
+    rmdir
+    删除文件夹命令
+    当使用这个命令删除文件夹时,目录必须为空(包括.文件--隐藏文件)
+    --> 特定场景下使用这个命令来替代rm -rf dirname,防止误删错误文件夹
+
+    mkdir
+    创建文件夹命令
+    创建一个新的文件夹,如: mkdir -p project/programs/December; -p参数会自动创建任何必需的父目录
+
+    chmod
+    更改已存在文件或者文件夹的属性命令
+    --> 数字方式 chmod 755 /dirname
+    --> 字符方式 chmod u+rwx /filename
+
+    chattr
+    更改文件属性命令,这个命令与chmod的功能类似,但是使用不同的选项和语法方式,(仅在ext文件系统上使用?)
+    --> chattr的一个特殊的参数'i'(immutable),当一个文件具有了i属性,表示这个文件是不可更改的,不能被修改,删除,链接(root也不行)
+    --> 当一个文件具有了's'(secure)属性时,文件被删除后,之前文件占用的块将被二进制0填充
+    --> 当一个文件具有了'u'(undelete)属性时,文件被删除后,文件内容仍能够获取到(状态为undeleted)
+    --> 当一个文件具有了'c'(compress)属性时,当文件被写时,自动压缩到磁盘文件,当文件被读时,自动从磁盘解压读取
+    --> chattr包含的文件属性不同使用ls -l显示出来
+
+    ln
+    为存在的文件创建链接,链接是一个文件的映射,文件的别名
+    --> ln命令允许被链接的文件包含不止一个映射名
+	--> ln命令还可以用作别名来使用,在脚本中充作别名(abs-p38)
+	--> ln只创建文件的映射,指向文件的指针大小只有几个字节大小
+	--> ln命令最常与-s选项一同使用(符号链接或者称为软链接);软链接的优势之一是可以跨越文件系统创建
+		ln -s oldfile newfile将oldfile链接一个新的文件名称newfile
+	--> 更改文件被链接文件的内容时,软链接和硬链接同时能够体现更改的文件内容;不同点是
+		a.删除或者重命名被链接文件后,硬链接不受影响,源文件的存储块内容并没有发生变化;但对于指向源文件名称的软链接来说,旧文件名称已经不存在,软链接将失效
+		b.软链接的优点是可以跨越文件系统进行链接,并且,不同于硬链接,软链接还可以指向文件夹,硬链接则不行
+	--> 链接的存在可以让脚本(或其他任何可执行的文件)通过不同的名称来调用(eg:/sbin/iptables -> xtables-multi),通过名称来限定脚本执行哪部分功能
+```
+#!/bin/bash
+# hello.sh
+ln -s hello.sh goodbye
+HELLO_CALL=65
+GOODBYE_CALL=66
+if [ $0 = "./goodbye" ]; then
+	echo "Good-bye!"			# Some other goodbye-type commands, as appropriate.
+	exit $GOODBYE_CALL
+fi
+
+echo "Hello!"
+exit $HELLO_CALL
+```
+	
+	man/info
+	获取帮助文档,info文档一般描述信息会比man文档更详尽
+	--> man文档的书写可以通过脚本来优化(abs-709)
+
+### 高级命令
+	find 
+	命令形式: -exec COMMAND \;
+	为每一行find匹配的内容执行COMMAND命令,命令序列是以';'结尾
+	--> 此处使用的-exec与shell自带命令exec别混淆了
+	--> 注意此处不是命令分隔使用到的';',find命令序列中';'是脱意的,为了确保shell将';'按照字面意思传递给find
+	--> 如果COMMAND中包含有{},则find将find匹配的路径或者文件名通过{}来替换;
+```
+find ~/ -name 'core*' -exec rm {} \;
+find /etc -exec grep '[0-9][0-9]*[.][0-9][0-9]*[.][0-9][0-9]*[.][0-9][0-9]*' {} \;
+find /home -type f -atime +5 -exec rm {} \;
+```
+	时间匹配: find可以通过文件的时间戳进行查找匹配
+		mtime = last modification time of the target file
+		ctime = last status change time (via 'chmod' or otherwise)
+		atime = last access time
+		(-mtime -1表示前一天被修改过的文件)
+	文件匹配: find可以通过文件类型进行查找匹配
+		f = regular file
+		d = directory
+		l = symbolic link, etc.
+```
+## 删除当前目录下包含特殊字符的文件
+find . -name '*[+{;"\\=?~()<>&*|$ ]*' -maxdepth 0 -exec rm -f '{}' \;
+## 通过inum删除文件
+inum=`ls -i | grep "$1" | awk '{print $1}'`
+find . -inum $inum -exec rm {} \;
+```
+
+    xargs
+    一个用来传递参数给命令的过滤器,同样也是一个集合命令的工具
+    --> xargs将数据流打散成足够小的块,用来给命令或者进程处理,可以将这个命令想成更加强大的后向引用
+    --> 在有些场景下,命令替换报too many arguements时,用xargs却可以使用
+    --> 一般场景下,xargs通过管道或者标准输入读取数据,但也可以通过一个文件的内容来获取
+    --> 默认传递给xargs的命令是echo,这表示当输入管道给到xargs时,换行符和一些其他空白字符会被跳过
+```
+bash$ ls -l | xargs
+total 0 -rw-rw-r-- 1 bozo bozo 0 Jan 29 23:58 file1 -rw-rw-r-- 1 bozo bozo 0 Jan...
+```
+    --> 命令ls | xargs -p -l gzip 将当前目录下的每个文件用gzip打包,每次一个,每进行一次会提示一次
+    --> xargs依次序处理传递给其的参数,一次一项
+    --> -n NN形式;限制每次传递给命令的参数数目,ls | xargs -n 3 echo -- 每次打印三个名字
+    --> 另外一个有用的参数是-0,通常和find -print0或者grep -lZ一同使用;这个场景下允许处理的参数中包含空白字符或者引用
+```
+find / -type f -print0 | xargs -0 grep -liwZ GUI | xargs -0 rm -f
+grep -rliwZ GUI / | xargs -0 rm -f
+```
+    --> -P选项允许并行执行命令,在多核机器中能够提高执行速度
+```
+ls *gif | xargs -t -n1 -P2 gif2png
+# Converts all the gif images in current directory to png.
+# Options:
+# =======
+# -t  Print command to stderr.
+# -n1 At most 1 argument per command line.
+# -P2 Run up to 2 processes simultaneously.
+```
+	--> 在find中使用,一对花括号的作用是作为占位符使用的
+```
+ls . | xargs -i -t cp ./{} $1
+
+# -t is "verbose" (output command-line to stderr) option.
+# -i is "replace strings" option.
+# {} is a placeholder for output text.
+# This is similar to the use of a curly-bracket pair in "find."
+```
+
+	expr
+	通用表达式求值运算命令
+	连接并对给出的命令选项和参数进行求值操作(各个参数之间必须用空格隔开)
+	--> 可进行的操作包括有: 算数运算,比较,字符或者逻辑运算
+```
+expr 3 + 5
+expr 5 % 3
+expr 1 / 0
+expr 5 \* 3                                     # 乘法运算,在expr表达式中,乘号需要脱意
+y=`expr $y + 1`                                 # 变量自增,等效于 let y=y+1 and y=$(($y+1))
+z=`expr substr $string $position $length`       # 获取变量string中position位置length长度的字符
+```
+    --> ':'运算符可以用来替代match;命令 b=`expr $a : [0-9]*`等效于 b=`expr match $a [0-9]*`
+
+
+
