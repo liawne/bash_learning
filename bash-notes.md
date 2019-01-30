@@ -1203,7 +1203,7 @@ Done.
     退出一个登录shell,后面可借参数n,指定登出shell的状态返回码
 
     times
-    显示命令执行用时数据,得出的信息价值有限,对于profile和基础shell脚本并不通用
+    显示进程执行用时数据,区别于time命令;得出的信息价值有限,对于profile和基础shell脚本并不通用
 
     kill
     强制终止一个进程,通过传递合适的终止信号
@@ -1454,5 +1454,123 @@ z=`expr substr $string $position $length`       # 获取变量string中position�
 ```
     --> ':'运算符可以用来替代match;命令 b=`expr $a : [0-9]*`等效于 b=`expr match $a [0-9]*`
 
+### 时间/日期命令
+    date
+    打印当前时间和日期信息到标准输出,这个命令的格式化输出和解析选项很有用
+    --> -u选项显示UTC时间
+    --> date可以用来计算不同时间之间的时间间隔
+    --> date有大量的输出选项可供选择;比如%N是给出当前时间的纳秒格式,这个形式可以用来获取随机数
+```
+date +%N | sed -e 's/000$//' -e 's/^0//'
+date --date='6 days ago'
+date --date='1 year ago'
+```
+    
+    zdump
+    时区dump:打印指定时区的时间
+```
+bash$ zdump EST
+EST Tue Sep 18 22:09:22 2001 EST
+```
+
+    time
+    显示执行一个命令的准确时间
+    --> time不同于命令times,注意
+```
+bash$ time ls -l /
+real    0m0.004s
+user    0m0.004s
+sys     0m0.001s
+```
+    
+    touch
+    更新文件的访问/修改时间为系统/指定时间,同时具有新建一个文件的功能
+    --> 当文件zzz不存在时,touch zzz会创建一个大小为0的文件zzz;这种方式用来存储日期/时间戳很有用
+    --> touch命令等效于:>> newfile或者>> newfile(普通文件)
+    --> 可以结合cp -a一起使用,使用touch更新不想被覆盖的文件时间戳,再用cp -u
+
+    at
+    at任务控制命令在指定的时间执行一系列指定的命令;命令类似于cron,at命令很适合只执行一次的命令
+    --> 使用-f选项或者<输入重定向,at充文件中读取命令;文件应该是一个可执行的shell脚本,同时是非交互式脚本
+    --> 需要执行较多内容时,可以结合run-parts命令来实现
+```
+bash$ at 2:30 am Friday < at-jobs.list
+job 2 at 2000-10-27 02:30
+```
+    
+    batch
+    batch命令类似于at命令,但要求在系统负载低于0.8时执行;类似于at,可以接-f选项
+
+    cal
+    打印简化版的日历到标准输出,可接不同选项,显示不同年份和月份的日历
+
+    sleep
+    这个是shell形势下的wait循环;命令暂停指定秒数的时间,什么都不做
+    --> 对于后台运行的命令或者定时进程很有用,定时检查事件
+    --> sleep命令默认情况下是使用秒,但也可以用分钟,小时或者天来定时
+    --> watch命令比sleep命令更适合周期性检查命令执行情况
+
+    usleep
+    类似与sleep,但默认时间为微秒,用在对时间更加精准或查询更加频繁的场景下
+    
+    hwclock/clock
+    命令hwclock获取或者调整机器的硬件时间,某些选项需要root权限才能使用
+    --> 在rhel6中,启动时,/etc/rc.d/rc.sysinit启动文件通过hwclock获取硬件时间来设置系统时间
+    --> clock是hwclock的同义词
+
+### 文本处理命令
+    sort
+    文件归类工具,通常用在管道后过滤使用
+    --> 命令用来正序,逆序或者指定位置关键字/字符位置来处理文本流或者文件
+    --> 使用-m选项,合入预处理过的文件
+    --> 可以查看info文档来获取sort的使用场景
+
+    tsort
+    拓扑排序,读取以空格分隔的字符串对，并根据输入模式进行排序;通常情况下tsort命令排序的结果与sort排序结果有较大差别
+
+    uniq
+    该命令移除文件中重复出现的行,通常会结合sort和管道一同使用
+```
+cat list-1 list-2 list-3 | sort | uniq > final.list
+```
+    --> 使用-c选项,在输出结果中显示重复出现的次数
+    --> sort INPUTFILE | uniq -c | sort -nr　命令打印出在INPUTFILE中出现的频次信息,使用场景为分析log文件或者字典列表等
+```
+sed -e 's/\.//g' -e 's/\,//g' -e 's/ //g' "$1" | tr 'A-Z' 'a-z' | sort | uniq -c | sort -nr
+```
+    
+    expand/unexpand
+    命令expand用来将tab展开为空格,通常与管道结合使用
+    命令unexpand将空格转换为tab,是expand的反转命令
+
+    cut
+    展开文件指定区域的命令.命令类似于在awk结构中的print $N,但相比较之下,限制更多.在脚本中使用cut命令会比使用awk更简单.cut重要的选项-f和-d
+```
+# 使用cut来获取挂载文件系统列表
+cut -d ' ' -f1,2 /etc/mtab
+# 使用cut列出OS和内核版本
+uname -a | cut -d" " -f1,3,11,12
+# 使用cut来解析email信息头部
+bash$ grep '^Subject:' read-messages | cut -c10-80
+Re: Linux suitable for mission-critical apps?
+MAKE MILLIONS WORKING AT HOME!!!
+Spam complaint
+Re: Spam complaint
+```
+    --> 甚至可以指定换行符作为分隔符
+```
+bash$ cut -d'
+' -f3,7,19 testfile
+This is line 3 of testfile.
+This is line 7 of testfile.
+This is line 19 of testfile.
+```
+    --> cut -d ' ' -f2,3 filename的结果等效于awk -F'[ ]' '{ print $2, $3 }' filename
+
+    paste
+    用于将多个文件合成为一个文件,将合成的结果输出到标准输出
+
+    join
+    这是一个特殊形式的paste命令
 
 
