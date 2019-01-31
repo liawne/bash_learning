@@ -1630,4 +1630,73 @@ bash$ grep Linux osinfo.txt /dev/null
 
     look
     look命令工作形式类似于grep,但是是基于字典(一个已排序的单词列表)进行查询;默认情况下,look在/usr/dict/words下进行匹配,但可以指定进行匹配的字典
+```
+file=words.database                  # Data file from which to read words to test.
+while [ "$word" != end ]; do         # Last word in data file.
+    read word
+    look $word > /dev/null
+    lookup=$?
+    if [ "$lookup" -eq 0 ]; then
+        echo "\"$word\" is valid."
+    else
+        echo "\"$word\" is invalid."
+    fi
+done <"$file"
+```
 
+    sed/awk
+    脚本语言,非常适合用来处理文本文件和标准输出的内容
+    sed
+    非交互式的流编辑器,在batch(不需要用户介入的情况下运行一组命令)模式下允许使用很多ex命令,在脚本中使用很广泛
+    awk
+    可编程式文件内容提取及格式化程序,适合用来操作或展开格式化的文本文件的列,语法格式类似于C语言
+
+    wc
+    计数程序
+    --> -w:单词数;-l:行数;-c:字节数;-m:字符数;-L:给出最长行的长度
+
+    tr
+    字符转化过滤器
+    --> 视情况决定是否需要使用引用或者括号,引号引用可以防止shell将属于tr的特殊字符先行处理了,括号必须被引起来,防止直接被展开
+```
+tr "A-Z" "*" <filename 
+tr A-Z \* <filename
+```
+    --> 接上-d选项,用于删除一系列的指定字符
+    --> --squeeze-repeats(-s)选项用来删除连续的字符(保留第一个),这个选项用来移除多余的空白字符很有用
+    --> -c(补足)选项将未匹配的内容用指定的字符替代
+```
+bash$ echo "acfdeb123" | tr -c b-d +
++c+d+b++++
+bash$ echo "abcd2ef1" | tr '[:alpha:]' -
+----2--1
+```
+    
+    fold
+    将输入的行折叠成指定宽度的过滤器
+    --> 使用-s选项用来以空格作为隔断符,防止直接截断字符
+```
+b=`ls /usr/local/bin`
+$ echo $b | fold - -s -w 40
+cnpm compile cops-cli gitbook pacvim
+ptyping qr-filetransfer runenpass sle
+study s-tui t termtosvg tget tiv
+# 等效于echo $b | fmt -w $WIDTH
+```
+    
+    fmt
+    简单的格式化工具,用于将长行分割为多行
+
+    column
+    列格式化工具,将列类型的文本输出转换成格式友好的打印形式,在合适的位置插入tab
+    --> 对于文件中存在多列内容,但未对齐的格式,使用column -t处理会很方便
+
+    colrm
+    列删除处理器,该命令删除文件中的列内容并直接写该文件
+    --> colrm 2 4 <filename 删除文件中的第二到第四列内容
+    --> 上列命令使用时,若文件中包含有tab之类的不可打印字符,则可能导致无法预估的结果,考虑使用expand/unexpand命令处理之后再管道传输给colrm
+    
+    nl
+    打印文件内容并附上行号
+    --> 打印的是非空行内容
+    --> nl的操作非常类似于cat -b,同样是不打印非空行
