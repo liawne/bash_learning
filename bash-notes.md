@@ -1700,3 +1700,141 @@ study s-tui t termtosvg tget tiv
     打印文件内容并附上行号
     --> 打印的是非空行内容
     --> nl的操作非常类似于cat -b,同样是不打印非空行
+
+## 更改方式,前期速度太慢,后面开始直接读文档,只在有必要的部分记录笔记
+
+    cpio
+    这个特定的归档复制命令已经很少用了,基本已经被tar/gzip取代;但在某些场景下,还是能够使用
+    --> 指定块大小进行复制,速度会比tar更快
+    find "$source" -depth | cpio -admvp "$destination"
+
+    rpm2cpio
+    这个命令从rpm包中解压一个cpio文件出来
+
+    gzip
+    结合-c选项使用时,将gzip的输出写入到标准输出,结合管道使用非常有用
+
+    zcat/bzcat
+    可以用来查看gzip/bzip文件中的内容,相当与bzip/gzip文件下的cat
+
+    readlink
+    获取符号链接指向的文件
+
+    strings
+    用来获取二进制文件或其他数据文件中的可打印字符
+
+    diff
+    逐行打印两个对比文件的不同内容
+    --> 使用--side-by-side选项,每个文件内容显示一列,相较原来的形式更方便对比查看
+    --> 使用-c和-u选项可以让输出结果更适合查看
+    --> 可以在判断结构中使用diff命令,当比较的两个文件同一的时候,命令返回值为0,当比较的两个文件不一样时,返回值非零
+
+    patch
+    一个非常灵活的版本记录命令,结合diff使用比较常见,可以给出一个由diff命令创建的差异文件
+
+    diff3
+    diff命令的升级版命令,可以一次比较三个文件,正常执行后命令返回值为0,但改命令不会打印文件差异内容出来
+
+    split/csplit
+    用于将一个文件切片为小块的工具,使用场景一般为文件太大,需要切片后邮件发送或者拷贝到移动磁盘
+    csplit命令通过文件内容来进行分片
+
+    sum,cksum,md5sum,sha1sum
+    以上命令是用于创建校验和的工具,校验和是通过对一个文件内容进行数学计算得出的字符串,用于检查文件的完整性
+
+    openssl
+    可以用于加密使用,结合tar一同使用,可以方便的加密相关目录和文件
+
+    shred
+    用随机字符多次重写文件,可用在安全要求高的场景下
+
+    mktemp
+    创建一个拥有唯一名称的临时文件,不使用其他参数是,在/tmp目录下创建一个大小为0的文件
+    --> tempfile=`mktemp $PREFIX.XXXXXX` 指定创建的新文件包含有多少个随机字符
+
+    ptx
+    ptx[targetfile]命令输出目标文件的排列索引（交叉引用列表）。如有必要，可以在管道中进一步过滤和格式化。
+
+    ipcalc
+    用于换算和查看ip相关的内容
+
+    traceroute
+    通过发送的包追踪路由
+
+    sx,rx
+    命令集通过xmodem协议与远端服务器传输文件
+
+    sz,rz
+    命令集通过zmodem协议与远端服务器传输文件,zmodem的速度相对xmodem更快
+
+    ssh
+    --> 在循环中使用ssh时,可能出现不可预期的情况,可以后接-f或者-n选项来避免
+
+    tput
+    --> 初始化终端和/或从terminfo数据中获取有关它的信息。各种选项允许某些终端操作：tput clear等于clear；tput reset等于reset。
+    --> tput可以用来对终端进行操作,更改字符显示方式等
+
+    reset
+    重置终端参数并且清屏
+
+    script
+    记录键盘敲击记录,执行该命令后,会在当前目录下生成一个文件,用于记录后面敲击的键盘记录
+
+    factor
+    后接一个数字,将该数字的各个因数打印出来
+
+    bc
+    bash无法进行浮点数计算,且缺少一些重要的运算功能,bc可以满足部分需求
+    --> bc可以用在脚本中,用来对变量进行计算获值variable=$(echo "OPTIONS; OPERATIONS" | bc)
+    --> 另外一种形式是结合here document的方式来作为输入
+```
+<< EOF
+18.33 * 19.78
+EOF
+`
+```
+    
+    awk
+    另外一种进行浮点数运算的方式是使用awk命令
+```
+AWKSCRIPT=' { printf( "%3.7f\n", sqrt($1*$1 + $2*$2) ) } '
+#           command(s) / parameters passed to awk
+
+# Now, pipe the parameters to awk.
+echo -n "Hypotenuse of $1 and $2 = "
+echo $1 $2 | awk "$AWKSCRIPT"
+```
+
+    jot,seq
+    生成一个整数序列,用户可以自定义步长和分隔符
+    --> seq -s : 5 指定分隔符为:,默认情况下是换行符
+    --> jot和seq都可以用在for循环中
+
+    run-parts
+    run-parts命令会执行目标目录下的所有脚本,默认依照ascii字母顺序执行,当然,脚本需要有执行权限
+
+    yes
+    yes默认的动作为返回y及换行符到标准输出,需要使用ctrl+C来终止
+    --> 使用yes string,则后面会不断重复出现string
+    --> 使用场景: yes | rm -r dirname
+
+    tee
+    类似与重定向,但与重定向不同
+                               (redirection)
+                              |----> to file
+                              |
+    ==========================|====================
+    command ---> command ---> |tee ---> command ---> ---> output of pipe
+    ===============================================
+
+    mkfifo
+    命令创建一个命名管道,一个临时的first-in-first-out用于在不同的进程之间传递数据,一般情况下,一个进程向FIFO中写数据,另一个进程则从FIFO中读取数据
+```
+(cut -d' ' -f1 | tr "a-z" "A-Z") >pipe2 <pipe1 &
+ls -l | tr -s ' ' | cut -d' ' -f3,9- | tee pipe1 | cut -d' ' -f2 | paste - pipe2
+rm -f pipe1
+rm -f pipe2
+```
+
+    od
+    od命令将
