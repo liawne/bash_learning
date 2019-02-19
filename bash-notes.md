@@ -1835,6 +1835,158 @@ ls -l | tr -s ' ' | cut -d' ' -f3,9- | tee pipe1 | cut -d' ' -f2 | paste - pipe2
 rm -f pipe1
 rm -f pipe2
 ```
+    groups
+    显示当前用户属于哪些组
 
-    od
-    od命令将
+    lid
+    命令将显示给出的用户名所属的groups列表
+
+    logname
+    显示登录当前终端登录系统的用户名称,即使su之后,改命令仍显示为源用户
+
+    ac
+    显示用户登录的时长
+
+    newgrp
+    更改当前用户的组id而不需要登出系统
+
+    tty
+    显示当前终端所在的文件名称
+
+    stty
+    显示或者是更改终端的设置,改命令较复杂,在脚本中使用时,可以控制终端的行为以及其输出内容的形式
+
+    setterm
+    设置指定的终端属性,这条命令会更改输出到标准输出结果的显示情况
+
+    getty/agetty
+    使用getty/agetty来初始化终端进程,这些命令不能在脚本中使用,脚本中可使用的是stty
+
+    lastcomm
+    显示上一条执行命令的一些相关信息,内容是存储在/var/accounut/pacct文件中的
+
+    strace(system trace)
+    用于诊断和debug系统调用的工具,该命令和ltrace可用来查找一个程序运行失败的原因
+
+    itrace(library trace)
+    用于诊断和debug库调用的工具
+
+    nc(netcat)
+    nc工具集是一个用来连接和监听TCP/UDP端口的工具
+
+    dmesg
+    打印所有的系统启动日志信息到标准输出
+
+    size
+    size /path/to/binary 会给出一个二进制文件的各个段大小,对于程序员来说,需要使用
+
+    logger
+    追加用户自定义的内容到/var/log/messages中去,普通用户也可以使用
+    --> 该命令可以用来在脚本中增加debug信息到日志中
+
+    logrotate
+    该工具用于管理系统的日志文件,轮转,压缩,删除或者email发送等,一般是结合cron一起使用来实现日志管理的
+
+    fuser
+    获取当前正在访问给定文件,文件集,或者目录的进程(通过进程号显示)
+    --> 同-k选项一同使用时,杀掉这些进程,在插拔可移动设备的场景下使用较多
+    --> 同-n选项一同使用时,获取到当前在访问指定端口的进程,与nmap一同搭配使用非常有用
+```
+# nmap localhost 
+PORT    STATE   SERVICE
+25/tcp  open    smtp
+
+# fuser -un tcp 25
+25/tcp: 2095(root)
+```
+
+    nmap
+    network mapper and port scanner,网络映射和端口扫描,查看指定主机开放的端口
+
+    sync
+    执行命令后,强制当前环境下,将buffer中的数据写入到磁盘中
+
+    losetup
+    创建或者配置loop设备
+
+    mkswap
+    创建一个swap分区或者文件,swap区域启动需要使用swapon命令
+
+    swapon/swapoff
+    启用/关闭swap设备
+
+    dumpe2fs
+    打印显示详细的文件系统相关信息,必须由root用户调用
+
+    hdparm
+    显示/更改磁盘参数,必须由root用户使用,错误使用很危险
+
+    badblocks
+    检查一个存储设备的坏块,在一个刚格式化后的设备或者备份文件时使用
+
+    lsusb,usbmodules
+    显示所有的usb设备信息
+
+    lspci
+    列出当前使用到的pci总线
+
+    chroot
+    顾名思义,更改当前的根目录位置
+
+    lockfile
+    属于procmail包的一部分,他创建一个lock 文件,用于作为一个标记文件存在,控制文件,设备或者资源的可获取性
+
+    flock
+    命令给文件设置一个锁信息的公告,当命令执行完成之后,其他命令或者进程才能操作刚才的文件
+```
+flock $0 cat $0 > lockfile__$0
+# Set a lock on the script the above line appears in,
+#+ while listing the script to stdout.
+```
+    --> 与lockfile命令不同的是,flock命令不会自动创建一个lock文件
+
+    mknod
+    创建一个块设备或者字符设备(当在系统上新增了一个新的设备之后可能有必要这样做),MAKEDEV工具比mknod更容易使用,且具备相应的功能
+
+    MAKEDEV
+    用于创建设备文件的命令,必须由root用户来执行,文件保存在/dev下,是高级版的mknod
+
+    tmpwatch
+    自动删除有一段时间没有被访问过的文件,通常结合cron一同使用,用于删除log文件
+
+    dump/restore
+    dump命令是设计用于备份文件系统的命令,命令读取磁盘分区的裸数据并写一个二进制文件
+
+    ulimit
+    设置一个更高的系统使用极值
+
+    quota
+    显示用户或者组的磁盘配额信息
+
+    setquota
+    设置用户或者组的磁盘配额
+
+    depmod
+    生成模块依赖文件,通常会被启动脚本调用
+
+    ldd
+    显示一个可执行文件需要使用到的共享库依赖
+
+    watch
+    以特定间隔运行一个命令
+
+### here document
+    << 可以结合vi一同使用,如下所示:
+```
+# Insert 2 lines in file, then save.
+#--------Begin here document-----------#
+vi $TARGETFILE <<x23LimitStringx23
+i
+This is line 1 of the example file.
+This is line 2 of the example file.
+^[
+ZZ
+x23LimitStringx23
+#----------End here document-----------#
+```
+    可以使用vi +n的形式指定文件打开后在第几行
