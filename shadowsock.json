@@ -1,0 +1,12 @@
+{
+    "server":           "nl1-sta126.32353.site",
+    "server_port":      56610,
+    "local_port":       1080,
+    "password":         "fRd3D7PRebcSjgS",
+    "method":           "chacha20-ietf-poly1305",
+    "localPort":        1080,
+    "index":            0,
+    "global":           false,
+    "enabled":          true,
+    "isDefault":        false
+}
