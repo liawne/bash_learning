@@ -1,0 +1,10 @@
+#!/bin/bash 
+RED='\033[1;35m'
+PURPLE='\033[0;35m'
+NC='\033[0m' # No Color
+bold=$(tput bold)
+WORD="$(shuf -n1 /home/liawne/.english_words)"
+printf "${bold}Word Of The Session: ${RED}${WORD}${NC}\n"
+printf "\n"
+/usr/bin/wd -o "${WORD}"
+exit 0
