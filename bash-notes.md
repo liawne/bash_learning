@@ -57,6 +57,7 @@
             echo {file1,file2}\ :{\ A," B",' C'}
         --> 扩展大括号展开
             echo {a..e}
+            echo {1..10..2} 显示10以内的奇数，步长为2
         --> 代码块,内联组(inline group), anonymous function, the variate in the inline group \
             can be seen in the scripts anywhere
             { read line1
