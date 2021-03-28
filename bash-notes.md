@@ -86,6 +86,19 @@
         --> >&2重定向到标准错误
         --> >> 追加
         --> [i]<>filename 打开文件filename读写,分配文件描述符i给文件,若i不存在,则默认使用stdin
+```
+#!/bin/bash    
+
+lock_file=/tmp/$(basename $0).lock
+
+exec 300<>$lock_file 
+if ! flock -x -n 300; then
+    echo "already running"
+else
+    echo "starting..."
+    sleep 30
+fi
+```
         --> (command)> 进程替换, 暂且记下,后续有具体讲解
         --> << here document
         --> <<< here string
